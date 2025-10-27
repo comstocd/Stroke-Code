@@ -107,6 +107,13 @@
             </svg>
         );
 
+        const Beaker = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M9 2v6.5l1.5 1.5v9a2 2 0 0 0 2 2 2 2 0 0 0 2-2v-9L16 8.5V2"></path>
+        <path d="M7 2h10"></path>
+    </svg>
+);
+        
         function StrokeRapidResponse() {
             const [nihssScores, setNihssScores] = useState({
                 consciousness: 0,
@@ -140,6 +147,12 @@
                 seizureAtOnset: false
             });
 
+            const [labsOrdered, setLabsOrdered] = useState({
+    glucose: false, noncontrastCT: false, ptInr: false, aptt: false,
+    plateletCount: false, cbc: false, renalFunction: false,
+    cardiacEnzymes: false, lfts: false
+});
+            
             const [activeTab, setActiveTab] = useState('nihss');
 
             const nihssItems = {
