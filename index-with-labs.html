@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Stroke Code Rapid Response Tool</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        input[type="radio"], input[type="checkbox"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        input[type="checkbox"] {
+            border-radius: 4px;
+        }
+        
+        input[type="radio"]:checked, input[type="checkbox"]:checked {
+            background-color: #2563eb;
+            border-color: #2563eb;
+        }
+        
+        input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: white;
+        }
+        
+        input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        label {
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        input[type="text"], input[type="number"], input[type="datetime-local"] {
+            font-size: 16px; /* Prevents iOS zoom on focus */
+        }
+        
+        .tab-button {
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Lucide icon components (simplified for standalone use)
+        const AlertCircle = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        );
+
+        const Clock = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+        );
+
+        const Activity = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+        );
+
+        const Beaker = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 2v6.5l1.5 1.5v9a2 2 0 0 0 2 2 2 2 0 0 0 2-2v-9L16 8.5V2"></path>
+                <path d="M7 2h10"></path>
+            </svg>
+        );
+       
+        function StrokeRapidResponse() {
+            const [nihssScores, setNihssScores] = useState({
+                consciousness: 0,
+                monthAge: 0,
+                commands: 0,
+                gaze: 0,
+                visual: 0,
+                facialPalsy: 0,
+                leftArm: 0,
+                rightArm: 0,
+                leftLeg: 0,
+                rightLeg: 0,
+                limbAtaxia: 0,
+                sensory: 0,
+                language: 0,
+                dysarthria: 0,
+                extinction: 0
+            });
+
+            const [strokeData, setStrokeData] = useState({
+                lastKnownWell: '',
+                symptomOnset: '',
+                bloodPressure: '',
+                glucose: '',
+                inrValue: '',
+                plateletCount: '',
+                onAnticoagulation: false,
+                recentSurgery: false,
+                recentStroke: false,
+                activeBleed: false,
+                seizureAtOnset: false
+            });
+
+            const [labsOrdered, setLabsOrdered] = useState({
+                glucose: false,
+                noncontrastCT: false,
+                ptInr: false,
+                aptt: false,
+                plateletCount: false,
+                cbc: false,
+                renalFunction: false,
+                cardiacEnzymes: false,
+                lfts: false
+            });
+           
+            const [activeTab, setActiveTab] = useState('nihss');
+
+            const nihssItems = {
+                consciousness: {
+                    name: '1a. Level of Consciousness',
+                    options: [
+                        { value: 0, label: '0 = Alert' },
+                        { value: 1, label: '1 = Not alert; arousable with minor stimulation' },
+                        { value: 2, label: '2 = Not alert; requires repeated stimulation' },
+                        { value: 3, label: '3 = Unresponsive or responds only with reflex' }
+                    ]
+                },
+                monthAge: {
+                    name: '1b. LOC Questions (Month and Age)',
+                    options: [
+                        { value: 0, label: '0 = Both correct' },
+                        { value: 1, label: '1 = One correct' },
+                        { value: 2, label: '2 = Both incorrect' }
+                    ]
+                },
+                commands: {
+                    name: '1c. LOC Commands (Close eyes, open/close hand)',
+                    options: [
+                        { value: 0, label: '0 = Both correct' },
+                        { value: 1, label: '1 = One correct' },
+                        { value: 2, label: '2 = Both incorrect' }
+                    ]
+                },
+                gaze: {
+                    name: '2. Best Gaze',
+                    options: [
+                        { value: 0, label: '0 = Normal' },
+                        { value: 1, label: '1 = Partial gaze palsy' },
+                        { value: 2, label: '2 = Forced deviation' }
+                    ]
+                },
+                visual: {
+                    name: '3. Visual Fields',
+                    options: [
+                        { value: 0, label: '0 = No visual loss' },
+                        { value: 1, label: '1 = Partial hemianopia' },
+                        { value: 2, label: '2 = Complete hemianopia' },
+                        { value: 3, label: '3 = Bilateral hemianopia (blind)' }
+                    ]
+                },
+                facialPalsy: {
+                    name: '4. Facial Palsy',
+                    options: [
+                        { value: 0, label: '0 = Normal' },
+                        { value: 1, label: '1 = Minor paralysis (flattened nasolabial fold)' },
+                        { value: 2, label: '2 = Partial paralysis (lower face)' },
+                        { value: 3, label: '3 = Complete paralysis (upper and lower face)' }
+                    ]
+                },
+                leftArm: {
+                    name: '5a. Left Arm Motor',
+                    options: [
+                        { value: 0, label: '0 = No drift (holds 90°/45° for 10 sec)' },
+                        { value: 1, label: '1 = Drift before 10 seconds' },
+                        { value: 2, label: '2 = Some effort against gravity' },
+                        { value: 3, label: '3 = No effort against gravity' },
+                        { value: 4, label: '4 = No movement' }
+                    ]
+                },
+                rightArm: {
+                    name: '5b. Right Arm Motor',
+                    options: [
+                        { value: 0, label: '0 = No drift (holds 90°/45° for 10 sec)' },
+                        { value: 1, label: '1 = Drift before 10 seconds' },
+                        { value: 2, label: '2 = Some effort against gravity' },
+                        { value: 3, label: '3 = No effort against gravity' },
+                        { value: 4, label: '4 = No movement' }
+                    ]
+                },
+                leftLeg: {
+                    name: '6a. Left Leg Motor',
+                    options: [
+                        { value: 0, label: '0 = No drift (holds 30° for 5 sec)' },
+                        { value: 1, label: '1 = Drift before 5 seconds' },
+                        { value: 2, label: '2 = Some effort against gravity' },
+                        { value: 3, label: '3 = No effort against gravity' },
+                        { value: 4, label: '4 = No movement' }
+                    ]
+                },
+                rightLeg: {
+                    name: '6b. Right Leg Motor',
+                    options: [
+                        { value: 0, label: '0 = No drift (holds 30° for 5 sec)' },
+                        { value: 1, label: '1 = Drift before 5 seconds' },
+                        { value: 2, label: '2 = Some effort against gravity' },
+                        { value: 3, label: '3 = No effort against gravity' },
+                        { value: 4, label: '4 = No movement' }
+                    ]
+                },
+                limbAtaxia: {
+                    name: '7. Limb Ataxia',
+                    options: [
+                        { value: 0, label: '0 = Absent' },
+                        { value: 1, label: '1 = Present in one limb' },
+                        { value: 2, label: '2 = Present in two limbs' }
+                    ]
+                },
+                sensory: {
+                    name: '8. Sensory',
+                    options: [
+                        { value: 0, label: '0 = Normal' },
+                        { value: 1, label: '1 = Mild-to-moderate loss' },
+                        { value: 2, label: '2 = Severe or total loss' }
+                    ]
+                },
+                language: {
+                    name: '9. Best Language',
+                    options: [
+                        { value: 0, label: '0 = No aphasia' },
+                        { value: 1, label: '1 = Mild-to-moderate aphasia' },
+                        { value: 2, label: '2 = Severe aphasia' },
+                        { value: 3, label: '3 = Mute or global aphasia' }
+                    ]
+                },
+                dysarthria: {
+                    name: '10. Dysarthria',
+                    options: [
+                        { value: 0, label: '0 = Normal' },
+                        { value: 1, label: '1 = Mild-to-moderate' },
+                        { value: 2, label: '2 = Severe' }
+                    ]
+                },
+                extinction: {
+                    name: '11. Extinction and Inattention',
+                    options: [
+                        { value: 0, label: '0 = No abnormality' },
+                        { value: 1, label: '1 = Inattention to one modality' },
+                        { value: 2, label: '2 = Profound hemi-inattention' }
+                    ]
+                }
+            };
+
+            const handleNIHSSChange = (item, value) => {
+                setNihssScores(prev => ({ ...prev, [item]: parseInt(value) }));
+            };
+
+            const totalNIHSS = Object.values(nihssScores).reduce((sum, score) => sum + score, 0);
+
+            const getNIHSSInterpretation = (score) => {
+                if (score === 0) return { severity: 'No stroke symptoms', color: 'text-green-600' };
+                if (score <= 4) return { severity: 'Minor stroke', color: 'text-yellow-600' };
+                if (score <= 15) return { severity: 'Moderate stroke', color: 'text-orange-600' };
+                if (score <= 20) return { severity: 'Moderate to severe stroke', color: 'text-red-600' };
+                return { severity: 'Severe stroke', color: 'text-red-800' };
+            };
+
+            const interpretation = getNIHSSInterpretation(totalNIHSS);
+
+            const calculateTimeWindow = () => {
+                if (!strokeData.lastKnownWell) return null;
+                const onset = new Date(strokeData.lastKnownWell);
+                const now = new Date();
+                const diffMs = now - onset;
+                const diffHours = diffMs / (1000 * 60 * 60);
+                return diffHours;
+            };
+
+            const timeWindow = calculateTimeWindow();
+
+            const assessTPAEligibility = () => {
+                const alerts = [];
+                const contraindications = [];
+
+                if (timeWindow === null) {
+                    alerts.push('Time of symptom onset not recorded');
+                } else if (timeWindow > 4.5) {
+                    contraindications.push('Outside 4.5-hour IV tPA window');
+                } else if (timeWindow > 3 && timeWindow <= 4.5) {
+                    alerts.push('In extended window (3-4.5 hours) - check additional exclusion criteria');
+                }
+
+                if (strokeData.glucose && (parseFloat(strokeData.glucose) < 50 || parseFloat(strokeData.glucose) > 400)) {
+                    contraindications.push('Glucose outside safe range (<50 or >400 mg/dL)');
+                }
+
+                const systolic = strokeData.bloodPressure ? parseInt(strokeData.bloodPressure.split('/')[0]) : null;
+                const diastolic = strokeData.bloodPressure ? parseInt(strokeData.bloodPressure.split('/')[1]) : null;
+                
+                if (systolic > 185 || diastolic > 110) {
+                    alerts.push('BP elevated - requires reduction to ≤185/110 before tPA');
+                }
+
+                if (strokeData.inrValue && parseFloat(strokeData.inrValue) > 1.7) {
+                    contraindications.push('INR >1.7 (if on warfarin)');
+                }
+
+                if (strokeData.plateletCount && parseFloat(strokeData.plateletCount) < 100000) {
+                    contraindications.push('Platelets <100,000');
+                }
+
+                if (strokeData.onAnticoagulation) {
+                    alerts.push('On anticoagulation - verify therapeutic levels and consider exclusion');
+                }
+
+                if (strokeData.recentSurgery) {
+                    contraindications.push('Recent major surgery or serious trauma');
+                }
+
+                if (strokeData.recentStroke) {
+                    contraindications.push('Recent stroke (within 3 months)');
+                }
+
+                if (strokeData.activeBleed) {
+                    contraindications.push('Active internal bleeding');
+                }
+
+                if (strokeData.seizureAtOnset) {
+                    alerts.push('Seizure at onset - postictal deficits may mimic stroke');
+                }
+
+                if (totalNIHSS < 4) {
+                    alerts.push('NIHSS <4 - consider if symptoms are disabling');
+                }
+
+                if (totalNIHSS > 22) {
+                    alerts.push('NIHSS >22 - increased hemorrhage risk, but not absolute contraindication');
+                }
+
+                return { alerts, contraindications };
+            };
+
+            const eligibility = assessTPAEligibility();
+
+            return (
+                <div className="max-w-5xl mx-auto p-4 md:p-6 bg-white min-h-screen">
+                    <div className="mb-6">
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Stroke Code Rapid Response Tool</h1>
+                        <p className="text-sm md:text-base text-gray-600">NIH Stroke Scale Calculator and tPA Eligibility Assessment</p>
+                    </div>
+
+                    <div className="flex border-b border-gray-300 mb-6 overflow-x-auto">
+                        <button
+                            onClick={() => setActiveTab('nihss')}
+                            className={`tab-button px-4 md:px-6 py-3 font-medium transition-colors whitespace-nowrap ${
+                                activeTab === 'nihss'
+                                    ? 'border-b-2 border-blue-600 text-blue-600'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <Activity />
+                            <span className="ml-2">NIH Stroke Scale</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('checklist')}
+                            className={`tab-button px-4 md:px-6 py-3 font-medium transition-colors whitespace-nowrap ${
+                                activeTab === 'checklist'
+                                    ? 'border-b-2 border-blue-600 text-blue-600'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <Clock />
+                            <span className="ml-2">Stroke Code Checklist</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('eligibility')}
+                            className={`tab-button px-4 md:px-6 py-3 font-medium transition-colors whitespace-nowrap ${
+                                activeTab === 'eligibility'
+                                    ? 'border-b-2 border-blue-600 text-blue-600'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <AlertCircle />
+                            <span className="ml-2">tPA Eligibility</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('labs')}
+                            className={`tab-button px-4 md:px-6 py-3 font-medium transition-colors whitespace-nowrap ${
+                                activeTab === 'labs'
+                                    ? 'border-b-2 border-blue-600 text-blue-600'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <Beaker />
+                            <span className="ml-2">Labs</span>
+                        </button>
+                    </div>
+
+                    {activeTab === 'nihss' && (
+                        <div>
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-gray-900">Total NIHSS Score</h2>
+                                        <p className={`text-lg font-semibold ${interpretation.color}`}>
+                                            {interpretation.severity}
+                                        </p>
+                                    </div>
+                                    <div className="text-4xl md:text-5xl font-bold text-blue-600">{totalNIHSS}</div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                {Object.entries(nihssItems).map(([key, item]) => (
+                                    <div key={key} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        <h3 className="font-semibold text-gray-900 mb-3 text-sm md:text-base">{item.name}</h3>
+                                        <div className="space-y-2">
+                                            {item.options.map((option) => (
+                                                <label key={option.value} className="flex items-start space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name={key}
+                                                        value={option.value}
+                                                        checked={nihssScores[key] === option.value}
+                                                        onChange={(e) => handleNIHSSChange(key, e.target.value)}
+                                                    />
+                                                    <span className="text-gray-700 text-sm md:text-base">{option.label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-300">
+                                <h3 className="font-semibold text-gray-900 mb-2">Score Interpretation</h3>
+                                <ul className="space-y-1 text-sm text-gray-700">
+                                    <li><span className="font-medium">0:</span> No stroke symptoms</li>
+                                    <li><span className="font-medium">1-4:</span> Minor stroke</li>
+                                    <li><span className="font-medium">5-15:</span> Moderate stroke</li>
+                                    <li><span className="font-medium">16-20:</span> Moderate to severe stroke</li>
+                                    <li><span className="font-medium">21-42:</span> Severe stroke</li>
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'checklist' && (
+                        <div className="space-y-6">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <h3 className="font-semibold text-gray-900 mb-2 flex items-center">
+                                    <Clock />
+                                    <span className="ml-2">Time is Brain</span>
+                                </h3>
+                                <p className="text-sm text-gray-700">
+                                    Door-to-needle goal: <span className="font-bold">60 minutes</span>
+                                </p>
+                            </div>
+
+                            <div className="bg-white rounded-lg border border-gray-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-4">Critical Timing Information</h3>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Last Known Well / Symptom Onset Time
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            value={strokeData.lastKnownWell}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, lastKnownWell: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        />
+                                        {timeWindow !== null && (
+                                            <p className={`mt-2 text-sm font-semibold ${
+                                                timeWindow <= 3 ? 'text-green-600' :
+                                                timeWindow <= 4.5 ? 'text-yellow-600' :
+                                                timeWindow <= 24 ? 'text-orange-600' : 'text-red-600'
+                                            }`}>
+                                                {timeWindow.toFixed(1)} hours from symptom onset
+                                                {timeWindow <= 4.5 && ' - Within IV tPA window'}
+                                                {timeWindow > 4.5 && timeWindow <= 24 && ' - Consider thrombectomy if LVO'}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg border border-gray-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-4">Vital Parameters</h3>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Blood Pressure (SBP/DBP)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., 180/100"
+                                            value={strokeData.bloodPressure}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, bloodPressure: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Blood Glucose (mg/dL)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            placeholder="e.g., 120"
+                                            value={strokeData.glucose}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, glucose: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg border border-gray-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-4">Laboratory Values</h3>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            INR (if on warfarin)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            placeholder="e.g., 1.2"
+                                            value={strokeData.inrValue}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, inrValue: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Platelet Count
+                                        </label>
+                                        <input
+                                            type="number"
+                                            placeholder="e.g., 200000"
+                                            value={strokeData.plateletCount}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, plateletCount: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg border border-gray-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-4">Clinical History</h3>
+                                
+                                <div className="space-y-3">
+                                    <label className="flex items-start space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={strokeData.onAnticoagulation}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, onAnticoagulation: e.target.checked }))}
+                                        />
+                                        <span className="text-gray-700 text-sm">Currently on anticoagulation (DOAC, warfarin, heparin)</span>
+                                    </label>
+
+                                    <label className="flex items-start space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={strokeData.recentSurgery}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, recentSurgery: e.target.checked }))}
+                                        />
+                                        <span className="text-gray-700 text-sm">Major surgery or serious trauma in past 14 days</span>
+                                    </label>
+
+                                    <label className="flex items-start space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={strokeData.recentStroke}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, recentStroke: e.target.checked }))}
+                                        />
+                                        <span className="text-gray-700 text-sm">Stroke or serious head trauma in past 3 months</span>
+                                    </label>
+
+                                    <label className="flex items-start space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={strokeData.activeBleed}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, activeBleed: e.target.checked }))}
+                                        />
+                                        <span className="text-gray-700 text-sm">Active internal bleeding</span>
+                                    </label>
+
+                                    <label className="flex items-start space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={strokeData.seizureAtOnset}
+                                            onChange={(e) => setStrokeData(prev => ({ ...prev, seizureAtOnset: e.target.checked }))}
+                                        />
+                                        <span className="text-gray-700 text-sm">Seizure at symptom onset</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'eligibility' && (
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-lg border border-gray-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-4">IV Alteplase (tPA) Eligibility Assessment</h3>
+                                
+                                {eligibility.contraindications.length === 0 && eligibility.alerts.length === 0 && (
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                        <p className="text-green-800 font-semibold">No absolute contraindications identified</p>
+                                        <p className="text-sm text-green-700 mt-2">
+                                            Verify CT shows no hemorrhage and complete full assessment before administering tPA
+                                        </p>
+                                    </div>
+                                )}
+
+                                {eligibility.contraindications.length > 0 && (
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                                        <h4 className="font-semibold text-red-900 mb-2 flex items-center">
+                                            <AlertCircle />
+                                            <span className="ml-2">Contraindications Identified</span>
+                                        </h4>
+                                        <ul className="space-y-1">
+                                            {eligibility.contraindications.map((item, idx) => (
+                                                <li key={idx} className="text-red-800 text-sm">• {item}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {eligibility.alerts.length > 0 && (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                        <h4 className="font-semibold text-yellow-900 mb-2 flex items-center">
+                                            <AlertCircle />
+                                            <span className="ml-2">Cautions / Considerations</span>
+                                        </h4>
+                                        <ul className="space-y-1">
+                                            {eligibility.alerts.map((item, idx) => (
+                                                <li key={idx} className="text-yellow-800 text-sm">• {item}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-white rounded-lg border border-gray-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-4">Key Absolute Contraindications to IV tPA</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                                    <div>
+                                        <h4 className="font-semibold text-gray-900 mb-2">Clinical</h4>
+                                        <ul className="space-y-1">
+                                            <li>• Active internal bleeding</li>
+                                            <li>• Intracranial hemorrhage (any history)</li>
+                                            <li>• Ischemic stroke within 3 months</li>
+                                            <li>• Serious head trauma within 3 months</li>
+                                            <li>• Intracranial/intraspinal surgery within 3 months</li>
+                                            <li>• Major surgery within 14 days</li>
+                                            <li>• GI or GU bleeding within 21 days</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-gray-900 mb-2">Laboratory / Imaging</h4>
+                                        <ul className="space-y-1">
+                                            <li>• Platelets &lt;100,000</li>
+                                            <li>• INR &gt;1.7 (if on warfarin)</li>
+                                            <li>• aPTT elevated (if on heparin)</li>
+                                            <li>• Glucose &lt;50 mg/dL</li>
+                                            <li>• BP &gt;185/110 (unresponsive to treatment)</li>
+                                            <li>• CT with hemorrhage</li>
+                                            <li>• Multilobar infarction (&gt;1/3 MCA territory)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h3 className="font-semibold text-gray-900 mb-2">IV Alteplase Dosing</h3>
+                                <div className="text-sm text-gray-700 space-y-2">
+                                    <p><span className="font-semibold">Standard dose:</span> 0.9 mg/kg (maximum 90 mg)</p>
+                                    <p><span className="font-semibold">Administration:</span> 10% bolus over 1 minute, remainder over 60 minutes</p>
+                                    <p className="text-red-700 font-semibold">Do NOT give anticoagulants or antiplatelets for 24 hours post-tPA</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg border border-gray-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-4">Mechanical Thrombectomy Considerations</h3>
+                                <div className="text-sm text-gray-700 space-y-2">
+                                    <p><span className="font-semibold">Consider if:</span></p>
+                                    <ul className="space-y-1 ml-4">
+                                        <li>• Large vessel occlusion (ICA, M1, M2, basilar)</li>
+                                        <li>• NIHSS ≥6</li>
+                                        <li>• Within 24 hours of symptom onset (with imaging selection)</li>
+                                        <li>• Pre-stroke mRS 0-1</li>
+                                    </ul>
+                                    <p className="font-semibold text-blue-700 mt-3">Activate stroke team immediately for LVO suspected cases</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'labs' && (
+                        <div className="space-y-6">
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <h3 className="font-semibold text-red-900 mb-2">Critical Reminder</h3>
+                                <p className="text-sm text-red-800">Only glucose and CT are universally required. Other labs should NOT delay treatment unless specific risk factors present.</p>
+                            </div>
+
+                            <div className="bg-white rounded-lg border-2 border-red-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center"><span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>Required</h3>
+                                <div className="space-y-3">
+                                    <label className="flex items-start space-x-3 cursor-pointer bg-gray-50 rounded p-3">
+                                        <input type="checkbox" checked={labsOrdered.glucose} onChange={(e) => setLabsOrdered(prev => ({ ...prev, glucose: e.target.checked }))} />
+                                        <div><span className="font-semibold block">Blood Glucose (POC OK)</span><span className="text-sm text-gray-700">Exclude hypoglycemia/hyperglycemia. Contraindicated if &lt;50 mg/dL</span></div>
+                                    </label>
+                                    <label className="flex items-start space-x-3 cursor-pointer bg-gray-50 rounded p-3">
+                                        <input type="checkbox" checked={labsOrdered.noncontrastCT} onChange={(e) => setLabsOrdered(prev => ({ ...prev, noncontrastCT: e.target.checked }))} />
+                                        <div><span className="font-semibold block">Noncontrast Head CT</span><span className="text-sm text-gray-700">Required to exclude intracranial hemorrhage</span></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg border-2 border-yellow-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center"><span className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>Conditional</h3>
+                                <p className="text-sm text-gray-600 mb-3 italic">Only if history/suspicion of coagulopathy, anticoagulant use, or thrombocytopenia</p>
+                                <div className="space-y-3">
+                                    <label className="flex items-start space-x-3 cursor-pointer bg-gray-50 rounded p-3">
+                                        <input type="checkbox" checked={labsOrdered.ptInr} onChange={(e) => setLabsOrdered(prev => ({ ...prev, ptInr: e.target.checked }))} />
+                                        <div><span className="font-semibold block">PT/INR</span><span className="text-sm text-gray-700">If warfarin use or liver disease. INR &gt;1.7 contraindication</span></div>
+                                    </label>
+                                    <label className="flex items-start space-x-3 cursor-pointer bg-gray-50 rounded p-3">
+                                        <input type="checkbox" checked={labsOrdered.aptt} onChange={(e) => setLabsOrdered(prev => ({ ...prev, aptt: e.target.checked }))} />
+                                        <div><span className="font-semibold block">aPTT</span><span className="text-sm text-gray-700">If heparin use. Elevated aPTT contraindication</span></div>
+                                    </label>
+                                    <label className="flex items-start space-x-3 cursor-pointer bg-gray-50 rounded p-3">
+                                        <input type="checkbox" checked={labsOrdered.plateletCount} onChange={(e) => setLabsOrdered(prev => ({ ...prev, plateletCount: e.target.checked }))} />
+                                        <div><span className="font-semibold block">Platelet Count</span><span className="text-sm text-gray-700">If thrombocytopenia history. &lt;100,000 contraindication</span></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg border-2 border-blue-300 p-4">
+                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center"><span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>Recommended (Do NOT Delay)</h3>
+                                <div className="space-y-3">
+                                    <label className="flex items-start space-x-3 cursor-pointer bg-gray-50 rounded p-3">
+                                        <input type="checkbox" checked={labsOrdered.cbc} onChange={(e) => setLabsOrdered(prev => ({ ...prev, cbc: e.target.checked }))} />
+                                        <div><span className="font-semibold block">CBC</span><span className="text-sm text-gray-700">Anemia, infection assessment</span></div>
+                                    </label>
+                                    <label className="flex items-start space-x-3 cursor-pointer bg-gray-50 rounded p-3">
+                                        <input type="checkbox" checked={labsOrdered.renalFunction} onChange={(e) => setLabsOrdered(prev => ({ ...prev, renalFunction: e.target.checked }))} />
+                                        <div><span className="font-semibold block">Renal Function</span><span className="text-sm text-gray-700">Baseline for post-stroke care</span></div>
+                                    </label>
+                                    <label className="flex items-start space-x-3 cursor-pointer bg-gray-50 rounded p-3">
+                                        <input type="checkbox" checked={labsOrdered.cardiacEnzymes} onChange={(e) => setLabsOrdered(prev => ({ ...prev, cardiacEnzymes: e.target.checked }))} />
+                                        <div><span className="font-semibold block">Cardiac Enzymes</span><span className="text-sm text-gray-700">Assess for concurrent ACS</span></div>
+                                    </label>
+                                    <label className="flex items-start space-x-3 cursor-pointer bg-gray-50 rounded p-3">
+                                        <input type="checkbox" checked={labsOrdered.lfts} onChange={(e) => setLabsOrdered(prev => ({ ...prev, lfts: e.target.checked }))} />
+                                        <div><span className="font-semibold block">LFTs</span><span className="text-sm text-gray-700">Liver disease baseline</span></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h3 className="font-semibold mb-2">Quick Reference</h3>
+                                <p className="text-sm"><span className="font-semibold text-red-700">REQUIRED:</span> Glucose + CT</p>
+                                <p className="text-sm"><span className="font-semibold text-yellow-700">CONDITIONAL:</span> PT/INR, aPTT, Platelets</p>
+                                <p className="text-sm"><span className="font-semibold text-blue-700">RECOMMENDED:</span> CBC, BMP, Troponin, LFTs</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="mt-8 pt-6 border-t border-gray-300">
+                        <p className="text-xs text-gray-500">
+                            <span className="font-semibold">Clinical Tool:</span> This tool is for educational and clinical decision support purposes. 
+                            Always follow institutional protocols and consult neurology for stroke code management. 
+                            Based on AHA/ASA Guidelines for the Early Management of Acute Ischemic Stroke.
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<StrokeRapidResponse />, document.getElementById('root'));
+    </script>
+</body>
+</html>
